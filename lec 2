@@ -1,0 +1,100 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score
+import matplotlib.pyplot as plt
+
+# Load the dataset
+data = pd.read_csv('kidney_disease.csv')
+
+# Handle missing values
+numeric_cols = data.select_dtypes(include=[np.number]).columns.tolist()
+categorical_cols = data.select_dtypes(include=[object]).columns.tolist()
+
+imputer_num = SimpleImputer(strategy='mean')
+imputer_cat = SimpleImputer(strategy='most_frequent')
+
+data[numeric_cols] = imputer_num.fit_transform(data[numeric_cols])
+data[categorical_cols] = imputer_cat.fit_transform(data[categorical_cols])
+
+# Convert categorical data to numerical data
+le = LabelEncoder()
+for col in categorical_cols:
+    data[col] = le.fit_transform(data[col])
+
+# Separate features and target variable
+X = data.drop(columns=['id', 'classification'])
+y = data['classification']
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Standardize the data
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# Initialize the classifiers
+svm_clf = SVC(probability=True)
+knn_clf = KNeighborsClassifier()
+nb_clf = GaussianNB()
+
+# Train the classifiers
+svm_clf.fit(X_train, y_train)
+knn_clf.fit(X_train, y_train)
+nb_clf.fit(X_train, y_train)
+
+# Make predictions
+y_pred_svm = svm_clf.predict(X_test)
+y_pred_knn = knn_clf.predict(X_test)
+y_pred_nb = nb_clf.predict(X_test)
+
+# Calculate accuracies
+accuracy_svm = accuracy_score(y_test, y_pred_svm)
+accuracy_knn = accuracy_score(y_test, y_pred_knn)
+accuracy_nb = accuracy_score(y_test, y_pred_nb)
+
+# Calculate confusion matrices
+conf_matrix_svm = confusion_matrix(y_test, y_pred_svm)
+conf_matrix_knn = confusion_matrix(y_test, y_pred_knn)
+conf_matrix_nb = confusion_matrix(y_test, y_pred_nb)
+
+# Calculate ROC curves and AUC scores
+y_prob_svm = svm_clf.predict_proba(X_test)[:, 1]
+y_prob_knn = knn_clf.predict_proba(X_test)[:, 1]
+y_prob_nb = nb_clf.predict_proba(X_test)[:, 1]
+
+fpr_svm, tpr_svm, _ = roc_curve(y_test, y_prob_svm, pos_label=1)
+fpr_knn, tpr_knn, _ = roc_curve(y_test, y_prob_knn, pos_label=1)
+fpr_nb, tpr_nb, _ = roc_curve(y_test, y_prob_nb, pos_label=1)
+
+auc_svm = roc_auc_score(y_test, y_prob_svm)
+auc_knn = roc_auc_score(y_test, y_prob_knn)
+auc_nb = roc_auc_score(y_test, y_prob_nb)
+
+# Plot ROC curves
+plt.figure(figsize=(10, 7))
+plt.plot(fpr_svm, tpr_svm, label=f'SVM (AUC = {auc_svm:.2f})')
+plt.plot(fpr_knn, tpr_knn, label=f'KNN (AUC = {auc_knn:.2f})')
+plt.plot(fpr_nb, tpr_nb, label=f'Naive Bayes (AUC = {auc_nb:.2f})')
+plt.plot([0, 1], [0, 1], 'k--')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('ROC Curves')
+plt.legend()
+plt.show()
+
+print(f"Accuracy of SVM: {accuracy_svm}")
+print(f"Accuracy of KNN: {accuracy_knn}")
+print(f"Accuracy of Naive Bayes: {accuracy_nb}")
+
+print(f"Confusion Matrix of SVM:\n{conf_matrix_svm}")
+print(f"Confusion Matrix of KNN:\n{conf_matrix_knn}")
+print(f"Confusion Matrix of Naive Bayes:\n{conf_matrix_nb}")
+    
+     
